@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ฟาร์มสุขใจ</title>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#fdf1e3;--card:#fffaf2;--ink:#6b4a3a;--acc:#ff9bb3;--acc2:#8fd694;--line:#f1d7b8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#2b2230;--card:#3a2f40;--ink:#ffe9d6;--line:#5a4a60}}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:'Mali','Sarabun','Noto Sans Thai',sans-serif}
+#app{max-width:720px;margin:0 auto;padding:10px;user-select:none;-webkit-user-select:none}
+h1{margin:4px 0 8px;font-size:20px;text-align:center}
+.bar{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
+.pill{background:var(--card);border:2px solid var(--line);border-radius:16px;padding:3px 10px;font-size:14px}
+.meter{width:90px;height:10px;background:var(--line);border-radius:9px;display:inline-block;vertical-align:middle;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--acc2);width:100%}
+#goal i{background:var(--acc)}
+canvas{width:100%;display:block;border-radius:18px;border:4px solid var(--line);image-rendering:auto;touch-action:none}
+#hot{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0}
+#hot button{position:relative;width:50px;padding:4px 0;border-radius:14px;border:3px solid var(--line);background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
+#hot button.on{border-color:var(--acc);background:#ffe3ea;color:#6b4a3a}
+#hot b{display:block;font-size:22px;font-weight:400}#hot small{font-size:11px}
+#hot em{position:absolute;top:-6px;right:-4px;background:var(--acc);color:#fff;border-radius:10px;font-style:normal;font-size:11px;padding:0 6px}
+#pad{display:flex;justify-content:space-between;align-items:center;padding:4px 14px}
+.dp{display:grid;grid-template-columns:repeat(3,52px);grid-template-rows:repeat(2,52px);gap:4px}
+.dp button,#act{border-radius:50%;border:3px solid var(--line);background:var(--card);color:var(--ink);font-size:22px;cursor:pointer;touch-action:none}
+.dp button:nth-child(1){grid-column:2}.dp button:nth-child(2){grid-row:2;grid-column:1}.dp button:nth-child(3){grid-row:2;grid-column:2}.dp button:nth-child(4){grid-row:2;grid-column:3}
+#act{width:84px;height:84px;background:var(--acc);color:#fff;font:inherit;font-size:18px}
+#modal{position:fixed;inset:0;background:rgba(60,30,40,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:5}
+#box{background:var(--card);border:4px solid var(--line);border-radius:22px;padding:16px;max-width:380px;width:100%;max-height:85%;overflow:auto}
+#box h2{margin:0 0 8px;font-size:18px}#box p{margin:6px 0;font-size:14px;line-height:1.6}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:6px 0;font-size:14px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:14px;padding:6px 14px;font:inherit;cursor:pointer}
+.btn.g{background:var(--acc2)}
+#toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 12px);transform:translateX(-50%);background:var(--card);border:3px solid var(--acc);border-radius:18px;padding:6px 14px;font-size:14px;opacity:0;transition:opacity .25s;pointer-events:none;z-index:6;max-width:90%;text-align:center}
+</style></head><body><div id="app">
+<h1>🌾 ฟาร์มสุขใจ 2 🌸</h1>
+<div class="bar">
+<button class='pill' id='snd' style='font:inherit;color:inherit;cursor:pointer' onclick='toggleSnd()'>🔊</button><span class="pill" id="d"></span><span class="pill" id="t"></span><span class="pill" id="m"></span>
+<span class="pill">⚡ <span class="meter"><i id="en"></i></span></span>
+<span class="pill" id="goal">🎯 <span class="meter"><i id="gb" style="width:0"></i></span> <small id="gt"></small></span>
+</div>
+<canvas id="c" width="576" height="384"></canvas>
+<div id="hot"></div><div class="bar" id="inv"></div>
+<div id="pad"><div class="dp"><button data-d="0,-1">▲</button><button data-d="-1,0">◀</button><button data-d="0,1">▼</button><button data-d="1,0">▶</button></div><button id="act">ลงมือ!</button></div>
+<p style="text-align:center;font-size:12px;opacity:.8">คีย์บอร์ด: ลูกศร/WASD เดิน · Space ลงมือ · 1-7 เปลี่ยนของ</p>
+</div>
+<div id="modal"><div id="box"></div></div><div id="toast"></div>
+<script>
+const $=i=>document.getElementById(i),cv=$('c'),g=cv.getContext('2d');
+const T=32,W=18,H=12,EF='"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+const CR={o:{n:'หัวหอม',e:'🧅',d:3,sell:30,seed:10},c:{n:'แครอท',e:'🥕',d:4,sell:55,seed:18},p:{n:'ฟักทอง',e:'🎃',d:6,sell:150,seed:40},w:{n:'ข้าวโพด',e:'🌽',d:5,sell:90,seed:28}};
+const FISH={f1:{n:'ปลาซิว',e:'🐟',sell:40},f2:{n:'ปลาการ์ตูน',e:'🐠',sell:70},f3:{n:'ปลาปักเป้า',e:'🐡',sell:120}};
+const price=k=>k==='egg'?30:k==='milk'?60:(CR[k]||FISH[k]).sell;
+const SEAS=[['ฤดูใบไม้ผลิ','🌸'],['ฤดูร้อน','☀️'],['ฤดูใบไม้ร่วง','🍂'],['ฤดูหนาว','❄️']];
+const GC=[['#c9efa9','#c1eaa0','#b8e29a','#b0dc92'],['#c6ec8f','#bfe789','#b2dd7e','#aad676'],['#f1dcaa','#ebd5a0','#e6c892','#dfc08a'],['#f4f9ff','#eaf3fb','#e3eef8','#dae8f4']];
+const season=()=>Math.floor((S.day-1)/7)%4;
+const TL=[{k:'hoe',e:'⛏️',n:'จอบ'},{k:'can',e:'💧',n:'บัวรดน้ำ'},{k:'o'},{k:'c'},{k:'p'},{k:'w'},{k:'rod',e:'🎣',n:'เบ็ดตกปลา'}];
+const S={day:1,min:360,money:50,en:100,seeds:{o:5,c:0,p:0,w:0},items:{o:0,c:0,p:0,w:0,egg:0,f1:0,f2:0,f3:0},heart:0,quest:null,maxEn:100,uh:0,uc:0,cow:false,gd:{},bait:0,fd:0,fr:{},fq:{},fd2:{},ring:0,gifts:0,spouse:null,wed:0,kids:[],vis:{},fa:{},fp:0,ev:{},fv:{},hl:0,va:{},cn:{},cq:{},cc:{},tool:0,rain:false,won:false};
+const P={x:5,y:2,f:[0,1]},F={x0:4,y0:3,x1:13,y1:10},soil={},eggs={};
+const R={house:{x:1,y:0,w:2,h:2,e:'🏠',l:'บ้าน (นอน)'},shop:{x:15,y:8,w:2,h:2,e:'🏪',l:'ร้านค้า'},box:{x:16,y:3,w:1,h:1,e:'📦',l:'ลังขาย'},pond:{x:6,y:0,w:3,h:2,e:'🌊',l:'บ่อปลา 🎣'},npc:{x:12,y:1,w:1,h:1,e:'👧',l:'น้องใบเตย'},gate:{x:16,y:5,w:1,h:1,e:'🚏',l:'ไปหมู่บ้านอื่น'}};
+const hs=(x,y)=>((x*73856093)^(y*19349663))>>>0;
+const objAt=(x,y)=>Object.keys(OB()).find(k=>{const r=OB()[k];return x>=r.x&&x<r.x+r.w&&y>=r.y&&y<r.y+r.h});
+const tree=(x,y)=>{if(objAt(x,y))return false;if(SC>=0)return IN?(x<4||x>13||y<2||y>9):y===0||y===11||x===0||x===17||((x<=2||x>=15||y<=1||y>=10)&&hs(x,y)%3===0);if(y===11||(x===0&&y>2)||(x===17&&y>=4))return true;
+return hs(x,y)%7===0&&!(x>=3&&x<=14&&y>=1&&y<=11)&&!(x>=14&&y<=5)&&!(x<=3&&y<=3)&&!(x>=14&&y>=7&&y<=10)};
+const free=(x,y)=>x>=0&&y>=0&&x<W&&y<H&&!objAt(x,y)&&!tree(x,y);
+const inF=(x,y)=>SC<0&&x>=F.x0&&x<=F.x1&&y>=F.y0&&y<=F.y1;
+const hens=[{e:'🐔',x:10,y:2,tx:10,ty:2,cx:10,cy:2},{e:'🐥',x:14,y:1,tx:14,ty:1,cx:14,cy:1}];
+let toastT;function say(s){sfx('pop');const t=$('toast');t.textContent=s;t.style.opacity=1;clearTimeout(toastT);toastT=setTimeout(()=>t.style.opacity=0,2200)}
+function modal(h){$('box').innerHTML=h;$('modal').style.display='flex'}function closeM(){$('modal').style.display='none'}
+const clock=()=>{const h=Math.floor(S.min/60),m=S.min%60;return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')};
+function ui(){$('d').textContent='📅 วันที่ '+S.day+' '+SEAS[season()][1]+SEAS[season()][0]+(S.day%7===0?' 🎉':'')+(S.rain?' 🌧️':'');$('t').textContent='🕐 '+clock();$('m').textContent='🪙 '+S.money;
+$('en').style.width=(S.en/S.maxEn*100)+'%';$('inv').innerHTML='🧺 '+(Object.keys(S.items).filter(k=>S.items[k]).map(k=>(CR[k]||FISH[k]||{e:k==='milk'?'🥛':'🥚'}).e+'×'+S.items[k]).join(' ')||'ว่างเปล่า')+' · '+('💗'.repeat(S.heart)||'🤍')+(S.ring?' · 💍':'')+(S.gifts?' · 🎁×'+S.gifts:'')+(S.bait?' · 🪱×'+S.bait:'')+(S.quest?' · 📜 ใบเตยขอ '+CR[S.quest.k].e+'×'+S.quest.n:'');$('gb').style.width=Math.min(100,S.money/30)+'%';$('gt').textContent='3000';
+$('hot').innerHTML=TL.map((t,i)=>{const c=CR[t.k];return `<button class="${i===S.tool?'on':''}" onclick="S.tool=${i};ui()"><b>${t.e||c.e}</b><small>${t.n||c.n}</small>${c?`<em>${S.seeds[t.k]}</em>`:''}</button>`}).join('')}
+function sellAll(){let tot=0,n=0;for(const k in S.items){const v=S.items[k];if(!v)continue;tot+=v*price(k);n+=v;S.items[k]=0}
+if(!n){say('ยังไม่มีของให้ขายเลย 🧺');return}S.money+=tot;say('ขายของ '+n+' ชิ้น ได้ '+tot+' เหรียญ! 🪙');ui();chk()}
+function chk(){if(S.money>=3000&&!S.won){S.won=true;modal('<h2>🎉 ยินดีด้วย!</h2><p>คุณสะสมเงินครบ 3,000 เหรียญแล้ว ฟาร์มของคุณเป็นฟาร์มในฝันเรียบร้อย! 🌈🐔</p><p>เล่นต่อได้เรื่อยๆ นะ</p><button class="btn" onclick="closeM()">เล่นต่อ</button>')}}
+function shop(){const r=Object.keys(CR).map(k=>`<div class="row"><span>${CR[k].e} เมล็ด${CR[k].n}<br><small>โต ${CR[k].d} วัน · ขาย ${CR[k].sell}🪙</small></span><button class="btn g" onclick="buy('${k}')">ซื้อ ${CR[k].seed}🪙</button></div>`).join('');
+modal(`<h2>🏪 ร้านค้าคุณป้าใจดี</h2><div class="row"><span>🪙 ${S.money}</span><button class="btn" onclick="sellAll();shop()">ขายของทั้งหมด</button></div>${r}<hr style="border-color:var(--line)"><b>✨ อัปเกรด</b>${ups()}<button class="btn" style="margin-top:8px" onclick="closeM()">ปิด</button> <button class="btn g" style="margin-top:8px" onclick="resetG()">เริ่มเกมใหม่</button>`)}
+function buy(k){if(S.money<CR[k].seed){say('เงินไม่พอจ้า 🥲');return}S.money-=CR[k].seed;S.seeds[k]++;ui();shop()}
+const VIL=[{k:'sea',n:'หมู่บ้านชายทะเล',e:'🏖️',sc:'🏖️⛵🐚🌴',npc:'🧓 ลุงเรือ',m:{f1:1.6,f2:1.6,f3:1.6},txt:'ปลาสดๆ ที่นี่รับซื้อแพงเลยนะ!'},{k:'mt',n:'หมู่บ้านบนเขา',e:'⛰️',sc:'⛰️🏔️🐐🌲',npc:'👵 ยายภูเขา',m:{p:1.5,w:1.5,c:1.3},txt:'ฟักทอง ข้าวโพด แครอท ยายให้ราคาดีจ้ะ'},{k:'fl',n:'หมู่บ้านดอกไม้',e:'🌷',sc:'🌷🌻🦋🏡',npc:'🧑‍🎨 พี่ดอกไม้',m:{egg:1.8,milk:1.8,o:1.3},txt:'ไข่กับนมสดๆ ที่นี่ขายดีมากเลย~'},{k:'mk',n:'ตลาดโบราณ',e:'🏮',sc:'🏮🍜🛶🏯',npc:'👴 เฮียตลาด',m:{o:1.3,c:1.3,p:1.3,w:1.3,egg:1.3,milk:1.3,f1:1.3,f2:1.3,f3:1.3},txt:'รับซื้อทุกอย่างราคายุติธรรมจ้า'},{k:'fo',n:'หมู่บ้านในป่า',e:'🌲',sc:'🌲🍄🦌🏕️',npc:'🧙 ปู่ป่า',m:{c:1.5,o:1.5,f1:1.3},txt:'พืชหัวขายดีที่นี่เลยนะ!'}];
+function travel(){modal('<h2>🚏 เดินทางไปหมู่บ้านอื่น</h2><p><small>ไป-กลับใช้เวลา 2 ชั่วโมง และพลังงาน 6</small></p>'+VIL.map((v,i)=>`<div class='row'><span>${v.e} ${v.n}</span><button class='btn g' onclick='go(${i})'>ไป</button></div>`).join('')+'<button class="btn" onclick="closeM()">ปิด</button>')}
+function go(i){if(S.en<6){say('พลังงานไม่พอเดินทาง 😴');return}S.en-=6;S.min+=120;S.vis[i]=1;SC=i;P.x=9;P.y=9;P.f=[0,-1];closeM();ui();say('ถึง'+VIL[i].n+'แล้ว! เดินสำรวจได้เลย '+VIL[i].e)}
+function home(){closeM();IN=false;SC=-1;P.x=15;P.y=5;P.f=[1,0];ui();if(S.min>=1440)sleep(true)}
+function vspec(i){if(i===3)return `<div class='row'><span>💍 แหวนหมั้น<br><small>ใช้ขอแต่งงาน (ต้องสนิทถึง 💗6)</small></span><button class='btn' onclick="vbuy('ring',3)">600🪙</button></div>`;if(i===4)return `<div class='row'><span>🎁 ของขวัญชุดพิเศษ<br><small>ให้เพื่อนได้ 💗+3 (มี ${S.gifts})</small></span><button class='btn' onclick="vbuy('gift',4)">80🪙</button></div>`;if(i===0)return `<div class='row'><span>🪱 เหยื่อพิเศษ ×5<br><small>ตกปลาติดทุกครั้ง ได้ปลาหายากง่ายขึ้น (มี ${S.bait})</small></span><button class='btn' onclick="vbuy('bait',0)">60🪙</button></div>`;
+if(i===1)return `<div class='row'><span>🎃 เมล็ดฟักทอง (ถูกกว่าที่ฟาร์ม)</span><button class='btn' onclick="vbuy('p',1)">28🪙</button></div><div class='row'><span>🌽 เมล็ดข้าวโพด (ถูกกว่าที่ฟาร์ม)</span><button class='btn' onclick="vbuy('w',1)">20🪙</button></div>`;
+return `<div class='row'><span>🌷 ช่อดอกไม้ให้น้องใบเตย<br><small>+💗 วันละครั้ง</small></span><button class='btn' onclick="vbuy('flower',2)">40🪙</button></div>`}
+function vbuy(t,i){const c={bait:60,p:28,w:20,flower:40,ring:600,gift:80}[t];if(S.money<c){say('เงินไม่พอจ้า 🥲');return}
+if(t==='flower'){if(S.fd===S.day){say('วันนี้ให้ดอกไม้ใบเตยไปแล้ว');return}S.fd=S.day;S.heart=Math.min(5,S.heart+1);say('ใบเตยดีใจมาก 💗')}else if(t==='ring'){if(S.ring){say('มีแหวนแล้วนะ 💍');return}S.ring=1;say('ได้แหวน 💍 แล้ว!')}else if(t==='gift'){S.gifts++;say('ได้ของขวัญ 🎁')}else if(t==='bait'){S.bait+=5;say('ได้เหยื่อ 5 ชิ้น 🪱')}else{S.seeds[t]++;say('ซื้อเมล็ดแล้ว 🌱')}
+S.money-=c;ui();village(i)}
+function vsell(i){const m=VIL[i].m;let tot=0,n=0;for(const k in S.items){const v=S.items[k];if(!v)continue;tot+=Math.round(v*price(k)*(m[k]||1)*(S.day%7===0?1.25:1));n+=v;S.items[k]=0}
+if(!n){say('ยังไม่มีของให้ขายเลย 🧺');return}S.money+=tot;say('ขายได้ '+tot+' เหรียญ! 🪙');ui();chk();village(i)}
+function vgift(i){S.gd[VIL[i].k]=S.day;const r=Math.random();
+if(r<.4){const k=['o','c','p','w'][Math.floor(Math.random()*4)];S.seeds[k]+=2;say('ได้เมล็ด '+CR[k].e+' ×2 เป็นของฝาก 🎁')}
+else if(r<.8){const m=30+Math.floor(Math.random()*50);S.money+=m;say('ได้ค่าขนม '+m+' เหรียญ 🪙')}else{S.bait+=3;say('ได้เหยื่อตกปลา ×3 🪱')}ui();village(i)}
+function village(i){const v=VIL[i],d=S.gd[v.k]!==S.day;
+modal(`<div style='font-size:34px;text-align:center'>${v.sc}</div><h2>${v.e} ${v.n}</h2><p>${v.npc}: “${v.txt}”</p><div class='row'><span>🪙 ${S.money}</span><button class='btn' onclick='vsell(${i})'>ขายของที่นี่</button></div>${vspec(i)}${d?`<button class='btn g' onclick='vgift(${i})'>🎁 รับของฝาก</button>`:'<p><small>วันนี้รับของฝากแล้ว</small></p>'}${S.day%7===0&&S.fv[i]!==S.day?`<button class='btn g' onclick='fest(${i})'>${FEST[season()].e} ร่วม${FEST[season()].n} (20🪙)</button> `:''}<button class='btn g' style='margin-top:6px' onclick='friend(${i})'>${FRS[i].e} คุยกับ${FRS[i].n} ${'💗'.repeat(Math.min(5,S.fr[i]||0))}</button><br><button class='btn' style='margin-top:8px' onclick='home()'>🚶 กลับฟาร์ม</button>`)}
+const FRS=[{n:'ธารา',e:'🧑‍🎣'},{n:'ภูผา',e:'🧑‍🏫'},{n:'ดอกรัก',e:'🧑‍🎤'},{n:'ข้าวหอม',e:'🧑‍🍳'},{n:'ใบไม้',e:'🧑‍🔬'},{n:'คลื่น',e:'🧑‍✈️'},{n:'ผาแดง',e:'🧑‍🚒'},{n:'พิกุล',e:'🧑‍🌾'},{n:'จันทร์เพ็ญ',e:'🧑‍💼'},{n:'ชะเอม',e:'🧑‍⚕️'}];
+const hp=i=>S.fr[i]||0,itemE=k=>(CR[k]||FISH[k]||{e:k==='milk'?'🥛':'🥚'}).e;
+function mkQ(){const ks=['o','c','p','w','egg','milk','f1','f2','f3'],k=ks[Math.floor(Math.random()*ks.length)],n=1+Math.floor(Math.random()*2);return{k,n,r:Math.round(price(k)*n*1.6)}}
+function friend(i){if(hev(i))return;const f=FRS[i],h=hp(i),q=S.fq[i]||(S.fq[i]=mkQ()),has=(S.items[q.k]||0)>=q.n,sp=S.spouse===i;
+modal(`<h2>${f.e} ${f.n} ${'💗'.repeat(Math.min(5,h))||'🤍'}</h2><p>${sp?'คู่ชีวิตของคุณ 💞':'“ยินดีที่ได้รู้จักนะ!”'}</p><p>📜 ภารกิจ: ขอ ${itemE(q.k)} ×${q.n} (รางวัล ${q.r}🪙 +💗) · คุณมี ${S.items[q.k]||0}</p>${has?`<button class='btn g' onclick='fdone(${i})'>ส่งของ</button> `:''}<button class='btn' onclick='ftalk(${i})'>💬 คุย</button> <button class='btn' onclick='fgift(${i})'>🎁 ให้ของขวัญ</button> ${(S.spouse==null&&S.ring&&h>=6)?`<button class='btn g' onclick='marry(${i})'>💍 ขอแต่งงาน</button>`:''}<br><button class='btn' style='margin-top:8px' onclick='village(${i%5})'>← กลับ</button>`)}
+function ftalk(i){if(S.fd2[i]===S.day){say('วันนี้คุยกันไปแล้วนะ');return}S.fd2[i]=S.day;S.fr[i]=hp(i)+1;say(['วันนี้อากาศดีเนอะ ☀️','เล่าเรื่องฟาร์มให้ฟังหน่อยสิ','ขอบคุณที่แวะมานะ 💕','ไว้มาเที่ยวอีกนะ!'][Math.floor(Math.random()*4)]);ui();friend(i)}
+function fdone(i){const q=S.fq[i];S.items[q.k]-=q.n;S.money+=q.r;S.fr[i]=hp(i)+2;S.fq[i]=null;say('ภารกิจสำเร็จ! +'+q.r+'🪙 💗');ui();chk();friend(i)}
+function fgift(i){const l=Object.keys(S.items).filter(k=>S.items[k]>0).map(k=>`<button class='btn' onclick='give(${i},${JSON.stringify(k)})'>${itemE(k)}×${S.items[k]}</button>`).join(' ')+(S.gifts?` <button class='btn g' onclick='give(${i},"gift")'>🎁×${S.gifts}</button>`:'');
+modal(`<h2>🎁 ให้ของขวัญ${FRS[i].n}</h2><p><small>ของขวัญชุดพิเศษ 🎁 ได้ 💗 มากกว่า</small></p><p>${l||'ยังไม่มีของให้เลย'}</p><button class='btn' onclick='friend(${i})'>← กลับ</button>`)}
+function give(i,k){if(k==='gift'){S.gifts--;S.fr[i]=hp(i)+3}else{S.items[k]--;S.fr[i]=hp(i)+1}say(FRS[i].n+' ดีใจมาก! 💗');ui();fgift(i)}
+function marry(i){S.spouse=i;S.ring=0;S.wed=S.day;closeM();modal(`<h2>💒 วันแต่งงาน!</h2><p style='font-size:40px;text-align:center'>🧑‍🌾💞${FRS[i].e}</p><p>${FRS[i].n} ย้ายมาอยู่ที่ฟาร์มกับคุณแล้ว! ทุกเช้าจะช่วยรดน้ำพืชให้ 🌱</p><button class='btn' onclick='closeM()'>ขอบคุณทุกคน 💕</button>`);famUp();ui();save()}
+function baby(){S.kids.push(S.day);closeM();say('ยินดีด้วย! มีสมาชิกใหม่ 👶💕');famUp();save()}
+function famUp(){for(let i=hens.length-1;i>=0;i--)if(hens[i].fam)hens.splice(i,1);const mk=(e,x,y)=>({e,x,y,tx:x,ty:y,cx:x,cy:y,fam:true});
+if(S.spouse!=null)hens.push(mk(FRS[S.spouse].e,3,3));S.kids.forEach((b,j)=>hens.push(mk(S.day-b<7?'👶':'🧒',4+j,2)))}
+function fday(){if(S.spouse==null)return;const m=S.kids.length*15;S.money+=m;say('อรุณสวัสดิ์ 💞 '+FRS[S.spouse].n+' ช่วยรดน้ำพืชให้แล้ว'+(m?' · ลูกๆ ให้ค่าขนม '+m+'🪙':''))}
+function family(){const sp=S.spouse!=null,k=S.kids.length,can=sp&&k<2+(S.hl||0)&&S.day-(k?S.kids[k-1]:S.wed)>=5;
+const Q=[['ไปเยือนครบทุกหมู่บ้าน',Object.keys(S.vis).length>=VIL.length],['มีเพื่อนสนิท 💗×5',FRS.some((f,i)=>hp(i)>=5)],['แต่งงาน 💍',sp],['มีลูก 👶',k>0],['สะสมเงิน 3,000 🪙',S.won]];
+modal(`<h2>📖 บ้านและภารกิจหลัก</h2>${sp?`<p>💞 คู่ชีวิต: ${FRS[S.spouse].e} ${FRS[S.spouse].n} · ลูก ${k} คน ${S.kids.map(b=>S.day-b<7?'👶':'🧒').join('')}</p><p><small>คู่ชีวิตช่วยรดน้ำพืชทุกเช้า ลูกๆ มีค่าขนมมาให้ 🪙 (ลูกคนต่อไปต้องรอ 5 วัน)</small></p>`:'<p>ยังไม่มีคู่ชีวิต — ซื้อแหวน 💍 ที่ตลาดโบราณ แล้วสนิทกับเพื่อนให้ถึง 💗6</p>'}${can?`<button class='btn g' onclick='baby()'>👶 ขอมีลูก</button>`:''}${sp?`<div class='row'><span>🍲 มื้อเย็นพร้อมหน้า (พลังงาน +25)</span><button class='btn' onclick='fact(1)'>ทำ</button></div>`:''}${k?`<div class='row'><span>🎲 เล่นกับลูกๆ</span><button class='btn' onclick='fact(2)'>ทำ</button></div>`:''}${sp?`<p><small>คะแนนครอบครัว ${S.fp}/5 (ครบแล้วได้ของขวัญ 🎁)</small></p>`:''}${Q.map(q=>`<div class='row'><span>${q[1]?'✅':'⬜'} ${q[0]}</span></div>`).join('')}${S.hl<2?`<div class='row'><span>${['🏡 ต่อเติมบ้านสวน','🏰 ปรับปรุงเป็นคฤหาสน์'][S.hl]}<br><small>ไข่หลังบ้านทุกเช้า · มื้อเย็นดีขึ้น · มีลูกได้เพิ่ม 1 คน</small></span><button class='btn' onclick='upHouse()'>${[800,2000][S.hl]}🪙</button></div>`:''}<button class='btn' style='margin-top:8px' onclick='closeM()'>ปิด</button>`)}
+const FEST=[{n:'เทศกาลดอกไม้บาน',e:'🌸'},{n:'เทศกาลสาดน้ำคลายร้อน',e:'💦'},{n:'เทศกาลลอยกระทง',e:'🏮'},{n:'เทศกาลปีใหม่',e:'🎆'}];
+const HOB=['ตกปลา','ปีนเขา','วาดรูป','ทำอาหาร','เก็บสมุนไพร','ดูดาว','ถ่ายรูป','ปลูกกุหลาบ','เล่นดนตรี','ทำขนม'];
+function fnote(){if(S.hl)S.items.egg+=S.hl;if(S.day%7===0)setTimeout(()=>say(FEST[season()].e+' วันนี้มี'+FEST[season()].n+'! ไปเที่ยวหมู่บ้านได้เลย (ขายของ ×1.25)'),2600)}
+function fest(i){if(S.money<20){say('เงินไม่พอจ้า 🥲');return}S.money-=20;S.fv[i]=S.day;const r=Math.random();let t;
+if(r<.35){const m=60+Math.floor(Math.random()*140);S.money+=m;t='ชนะเกมในงาน ได้เงินรางวัล '+m+'🪙'}else if(r<.6){S.gifts++;t='จับฉลากได้ของขวัญ 🎁'}else if(r<.85){S.seeds.p++;S.seeds.w++;t='ได้เมล็ดพันธุ์ดีเป็นของที่ระลึก 🌱'}else t='เต้นรำกับ'+FRS[i].n+'ทั้งคืน! 💗+3';
+S.fr[i]=hp(i)+(r>=.85?3:1);ui();chk();modal(`<h2>${FEST[season()].e} ${FEST[season()].n}</h2><p>${t}</p><button class='btn' onclick='village(${i})'>กลับ</button>`)}
+function hev(i){const n=FRS[i].n,L=[[2,`${n} เล่าให้ฟังว่าชอบ${HOB[i]}มากที่สุด แล้วยื่นของขวัญเล็กๆ ให้คุณ 🎁`,()=>S.gifts++],[4,`${n} ชวนคุณไปปิกนิกใต้ต้นไม้ใหญ่ หัวเราะกันตลอดบ่าย 🧺 ได้เงินค่าขนม 120🪙`,()=>S.money+=120],[6,`${n} เอ่ยว่า “อยู่ใกล้คุณแล้วสบายใจจัง” 💞 ได้ของขวัญเพิ่ม ถ้ามีแหวนก็ขอแต่งงานได้เลย`,()=>S.gifts+=2]];
+for(const[t,s,f]of L){const k=i+'-'+t;if(hp(i)>=t&&!S.ev[k]){S.ev[k]=1;f();ui();modal(`<h2>${FRS[i].e} เหตุการณ์พิเศษ 💗</h2><p>${s}</p><button class='btn' onclick='friend(${i})'>ต่อ</button>`);return true}}return false}
+function fact(t){if(S.fa[t]===S.day){say('วันนี้ทำกิจกรรมนี้ไปแล้ว');return}S.fa[t]=S.day;
+if(t===1){S.en=Math.min(S.maxEn,S.en+25+15*(S.hl||0));S.fp++;say('มื้อเย็นอบอุ่น 🍲 พลังงานเพิ่มแล้ว')}else{S.fp+=S.kids.length;say('เล่นกับลูกๆ สนุกมาก 🎲💕')}
+if(S.fp>=5){S.fp-=5;S.gifts++;say('ครอบครัวอบอุ่น! ได้ของขวัญ 🎁')}ui();family()}
+let AC=null,snd=true,mi=0;
+function tone(f,d,v,ty){if(!AC)return;const o=AC.createOscillator(),a=AC.createGain();o.type=ty||'sine';o.frequency.value=f;a.gain.setValueAtTime(v,AC.currentTime);a.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(a);a.connect(AC.destination);o.start();o.stop(AC.currentTime+d+.02)}
+function sfx(t){if(!snd)return;try{AC=AC||new(window.AudioContext||window.webkitAudioContext)();if(AC.state==='suspended')AC.resume();tone(t==='tap'?330:620,.14,.07);if(t==='pop')setTimeout(()=>tone(880,.12,.05),70)}catch(e){}}
+function toggleSnd(){snd=!snd;$('snd').textContent=snd?'🔊':'🔇';if(snd)sfx('pop')}
+const MEL=[523,587,659,784,659,587,523,0,659,784,880,784,659,587,523,0];
+setInterval(()=>{if(!snd||!AC||AC.state!=='running'||document.hidden)return;const f=MEL[mi++%MEL.length];if(f)tone(f*(S.rain?.75:1),.5,.025,'triangle')},520);
+function upHouse(){const c=[800,2000][S.hl];if(S.money<c){say('เงินไม่พอจ้า 🥲');return}S.money-=c;S.hl++;ui();save();modal(`<h2>${['🏠','🏡','🏰'][S.hl]} ต่อเติมบ้านเสร็จแล้ว!</h2><p>ไก่หลังบ้านออกไข่ให้ทุกเช้า 🥚×${S.hl} · มื้อเย็นให้พลังงานมากขึ้น · มีลูกได้สูงสุด ${2+S.hl} คน</p><button class='btn' onclick='closeM()'>เยี่ยมเลย!</button>`)}
+let SC=-1,IN=false;const OB=()=>SC<0?R:IN?VI[SC]:VR[SC];
+const VG=[['#f6e7b4','#f0dfa8','#efdca0','#e8d396'],['#cfe3c0','#c5dbb4','#bcd2ab','#b2c9a1'],['#ffd9ec','#ffcfe5','#ffc4de','#ffbad8'],['#f0d9b5','#e9cfa5','#e2c597','#dbbb8a'],['#a8d8a0','#9ccf94','#90c688','#84bd7c']];
+const VD=[['⛵','🌴'],['🏔️','🐐'],['🏡','🌻'],['🏯','🏮'],['🏕️','🍄']];
+const VR=VIL.map((v,i)=>{const nn=v.npc.split(' '),o={elder:{x:5+i%2*5,y:2,w:1,h:1,e:nn[0],l:nn[1]},fr:{x:12,y:5,w:1,h:1,e:FRS[i].e,l:FRS[i].n},d1:{x:2,y:3,w:2,h:2,e:VD[i][0],l:v.n},d2:{x:13,y:7,w:2,h:2,e:VD[i][1],l:''},out:{x:9,y:10,w:1,h:1,e:'🚏',l:'กลับฟาร์ม'}};if(i===0)o.pond={x:5,y:6,w:6,h:3,e:'🌊',l:'ทะเล 🎣'};return o});
+const VF=['#f3d9b1','#ecd0a3','#ecd0a3','#f3d9b1'];
+const VB=[['ร้านอาหารทะเล','👩‍🍳','🐚','🏬'],['ร้านชาบนเขา','🧑‍🍳','☕','🛖'],['คาเฟ่ดอกไม้','👩‍🍳','💐','🏪'],['ร้านก๋วยเตี๋ยวเรือ','🧑‍🍳','🍜','🏮'],['ศาลาผิงไฟ','🧑‍🍳','🔥','⛺']];
+const VA=[['ออกเรือหาปลา'],['ปีนเขาเก็บสมุนไพร'],['ประกวดจัดดอกไม้'],['วงล้อโชคลาภ (25🪙)'],['ผิงไฟคุยกับเพื่อน']];
+const VN=[[['🧑‍🌾','ลุงมี','เรือลำนี้ต่อมาตั้งแต่รุ่นปู่เลยนะ'],['👦','น้องทะเล','พี่ๆ ตกปลาได้เยอะไหม?']],[['🧑‍🦳','ตาเขา','ลมบนเขาเย็นสบาย เหมาะปลูกฟักทองจริงๆ'],['🐐','แพะน้อย','แบ๊~ (ดูเหมือนอยากได้ผัก)']],[['👩‍🌾','ป้าพวงชมพู','ดอกไม้ที่นี่บานทั้งปีเลยจ้ะ'],['🧒','หนูดาว','หนูชอบผีเสื้อที่สุดเลย 🦋']],[['🧑‍🍳','เจ๊หมี่','ชิมก๋วยเตี๋ยวก่อนไหมคะ'],['👴','ลุงโกวิท','ตลาดเก่านี้อายุร้อยกว่าปีแล้วนะ']],[['🦌','กวางน้อย','(กวางมองคุณเงียบๆ แล้วเดินเข้าป่าไป)'],['🧝','เอลฟ์ป่า','ต้นไม้ที่นี่คุยกันตอนกลางคืนนะ รู้ไหม?']]];
+VR.forEach((o,i)=>{o.act=o.d1;delete o.d1;o.act.l=VA[i][0];o.bld={x:7,y:2,w:2,h:2,e:['🏬','🛖','🏪','🏮','⛺'][i],l:VB[i][0]};o.v1={x:5,y:5,w:1,h:1,e:VN[i][0][0],l:VN[i][0][1]};o.v2={x:14,y:3,w:1,h:1,e:VN[i][1][0],l:VN[i][1][1]}});
+const VI=VIL.map((v,i)=>({host:{x:8,y:3,w:1,h:1,e:VB[i][1],l:VB[i][0]},d1:{x:4,y:2,w:2,h:2,e:'🛋️',l:''},d2:{x:12,y:2,w:2,h:2,e:'🪴',l:''},d3:{x:11,y:6,w:2,h:2,e:VB[i][2],l:''},door:{x:8,y:9,w:1,h:1,e:'🚪',l:'ประตู (ออก)'}}));
+function enter(){IN=true;P.x=8;P.y=8;P.f=[0,-1];say('เข้ามาในร้านแล้ว 🚪')}
+function leave(){IN=false;P.x=8;P.y=4;P.f=[0,1]}
+function cafe(i){modal(`<h2>${VB[i][1]} ${VB[i][0]}</h2><p>“ยินดีต้อนรับ! วันนี้กินอะไรดี?”</p><div class='row'><span>🍵 เครื่องดื่มอุ่นๆ (+20 ⚡)</span><button class='btn' onclick='eat(15,20,${i})'>15🪙</button></div><div class='row'><span>🍱 อาหารจานเด็ด (+50 ⚡)</span><button class='btn' onclick='eat(40,50,${i})'>40🪙</button></div><button class='btn' onclick='closeM()'>ปิด</button>`)}
+function eat(c,e,i){if(S.money<c){say('เงินไม่พอจ้า 🥲');return}S.money-=c;S.en=Math.min(S.maxEn,S.en+e);say('อร่อยจัง! พลังงานเพิ่มขึ้น 😋');ui();cafe(i)}
+function chat(i,j){const[e,n,t]=VN[i][j],k=i+'-'+j;let b='';if(S.cn[k]!==S.day){S.cn[k]=S.day;if(Math.random()<.5){const m=10+Math.floor(Math.random()*30);S.money+=m;b='<p>🎁 ให้เงินค่าขนม '+m+'🪙</p>'}else{const q=['o','c','p','w'][Math.floor(Math.random()*4)];S.seeds[q]++;b='<p>🎁 แจกเมล็ด '+CR[q].e+' 1 เม็ด</p>'}ui()}
+modal(`<h2>${e} ${n}</h2><p>“${t}”</p>${b}<button class='btn' onclick='closeM()'>ปิด</button>`)}
+function vact(i){if(S.va[i]===S.day){say('วันนี้ทำกิจกรรมที่นี่ไปแล้ว');return}
+if(i<3&&S.en<8){say('พลังงานไม่พอ 😴');return}let t;
+if(i===0){S.en-=8;const n=[0,0,0].map(()=>['f1','f1','f2','f3'][Math.floor(Math.random()*4)]);n.forEach(k=>S.items[k]++);t='ออกเรือหาปลาได้ '+n.map(k=>FISH[k].e).join(' ')}
+else if(i===1){S.en-=8;const k=['o','c','p','w'][Math.floor(Math.random()*4)];S.items[k]+=2;t='เก็บสมุนไพรและผลผลิตป่าเขา ได้ '+CR[k].e+'×2'}
+else if(i===2){S.en-=5;const m=40+Math.floor(Math.random()*80);S.money+=m;S.fr[i]=hp(i)+1;t='ประกวดจัดช่อดอกไม้ ได้รางวัล '+m+'🪙 และเพื่อนชื่นชม 💗+1'}
+else if(i===3){if(S.money<25){say('เงินไม่พอจ้า 🥲');return}S.money-=25;const m=[0,10,25,60,150,300][Math.floor(Math.random()*6)];S.money+=m;t='หมุนวงล้อโชคลาภ ได้ '+m+'🪙'}
+else{S.en=Math.min(S.maxEn,S.en+30);S.min+=60;S.fr[i]=hp(i)+1;t='นั่งผิงไฟกับเพื่อน 🔥 พลังงาน +30 และ 💗+1 (ใช้เวลา 1 ชม.)'}
+S.va[i]=S.day;ui();chk();modal(`<h2>${VD[i][0]} ${VA[i][0]}</h2><p>${t}</p><button class='btn' onclick='closeM()'>ตกลง</button>`)}
+VR.forEach((o,i)=>{o.fr2={x:3,y:8,w:1,h:1,e:FRS[i+5].e,l:FRS[i+5].n};['v1','v2','fr','fr2'].forEach(k=>{const r=o[k];r.m=1;r.ax=r.x;r.ay=r.y})});
+setInterval(()=>{if(SC<0||IN)return;const O=VR[SC];for(const k in O){const r=O[k];if(!r.m||Math.random()<.5)continue;const d=[[1,0],[-1,0],[0,1],[0,-1]][Math.floor(Math.random()*4)],nx=r.x+d[0],ny=r.y+d[1];if(nx>=2&&nx<=15&&ny>=2&&ny<=9&&free(nx,ny)&&!(nx===P.x&&ny===P.y)){r.x=nx;r.y=ny}}},900);
+function cafe(i){const q=S.cq[i]||(S.cq[i]=mkQ()),has=(S.items[q.k]||0)>=q.n,n=S.cc[i]||0,d=n>=3?.7:1,c1=Math.round(15*d),c2=Math.round(40*d);
+modal(`<h2>${VB[i][1]} ${VB[i][0]}</h2><p>“ยินดีต้อนรับ! วันนี้กินอะไรดี?”</p><div class='row'><span>🍵 เครื่องดื่มอุ่นๆ (+20 ⚡)</span><button class='btn' onclick='eat(${c1},20,${i})'>${c1}🪙</button></div><div class='row'><span>🍱 อาหารจานเด็ด (+50 ⚡)</span><button class='btn' onclick='eat(${c2},50,${i})'>${c2}🪙</button></div><hr style='border-color:var(--line)'><p>📜 ภารกิจร้าน: ต้องการ ${itemE(q.k)}×${q.n} รางวัล ${q.r}🪙 +🎁 (คุณมี ${S.items[q.k]||0})</p><p><small>ส่งครบ 3 ครั้ง ลดราคาอาหาร 30% ถาวร (ส่งแล้ว ${n}/3)</small></p>${has?`<button class='btn g' onclick='cdone(${i})'>ส่งของ</button> `:''}<button class='btn' onclick='closeM()'>ปิด</button>`)}
+function cdone(i){const q=S.cq[i];S.items[q.k]-=q.n;S.money+=q.r;S.gifts++;S.cc[i]=(S.cc[i]||0)+1;S.cq[i]=null;say('ส่งของให้ร้านสำเร็จ! +'+q.r+'🪙 🎁');ui();chk();cafe(i)}
+const mkCow=()=>({e:'🐄',x:15,y:6,tx:15,ty:6,cx:15,cy:6,cow:true});
+const UC={h:()=>[250,600][S.uh],c:()=>300,e:()=>200+(S.maxEn-100)/25*150,w:()=>600};
+function ups(){const R=(l,t,f)=>`<div class="row"><span>${l}</span><button class="btn" onclick="upg('${t}')">${UC[t]()}🪙</button></div>`;let h='';
+if(S.uh<2)h+=R('⛏️ จอบ'+['เงิน','ทอง'][S.uh]+' (ออกแรงน้อยลง)','h');
+if(S.uc<1)h+=R('💧 บัวรดน้ำทอง (ออกแรงน้อยลง)','c');
+if(S.maxEn<200)h+=R('🍵 ชาสมุนไพร (พลังงานสูงสุด +25)','e');
+if(!S.cow)h+=R('🐄 วัวน้อย (ให้นม 🥛 ทุกวัน)','w');
+return h||'<p>อัปเกรดครบทุกอย่างแล้ว 🎉</p>'}
+function upg(t){const c=UC[t]();if(S.money<c){say('เงินไม่พอจ้า 🥲');return}S.money-=c;
+if(t==='h')S.uh++;if(t==='c')S.uc++;if(t==='e'){S.maxEn+=25;S.en+=25}if(t==='w'){S.cow=true;hens.push(mkCow())}
+say('อัปเกรดสำเร็จ! ✨');ui();shop();save()}
+function resetG(){if(!window._rc){window._rc=1;say('กดอีกครั้งเพื่อยืนยันเริ่มเกมใหม่');setTimeout(()=>window._rc=0,3000);return}
+window.nosave=1;try{localStorage.removeItem(SK)}catch(e){}location.reload()}
+function newQuest(){const k=['o','c','p','w'][Math.floor(Math.random()*4)],n=1+Math.floor(Math.random()*3);S.quest={k,n,r:Math.round(CR[k].sell*n*(1.8+S.heart*.15))}}
+function talk(){if(!S.quest)newQuest();const q=S.quest,c=CR[q.k],has=S.items[q.k]>=q.n;
+modal(`<h2>👧 น้องใบเตย ${'💗'.repeat(S.heart)||'🤍'}</h2><p>สวัสดีจ้า! ตอนนี้ใบเตยอยากได้ ${c.e} ${c.n} ${q.n} ชิ้น แลกกับ ${q.r} เหรียญเลยนะ</p><p>${has?'ของครบแล้ว ✨':'คุณมี '+S.items[q.k]+'/'+q.n+' ชิ้น'}</p>${has?'<button class="btn g" onclick="giveQ()">ส่งของ</button> ':''}<button class="btn" onclick="closeM()">ปิด</button>`)}
+function giveQ(){const q=S.quest;S.items[q.k]-=q.n;S.money+=q.r;S.heart=Math.min(5,S.heart+1);S.quest=null;closeM();say('ใบเตยดีใจมาก! ได้ '+q.r+' เหรียญ 💗');ui();chk()}
+function fish(){if(TL[S.tool].k!=='rod'){say('เลือกเบ็ดตกปลา 🎣 ก่อนนะ');return}if(S.en<4){say('หมดแรงแล้ว 😴');return}S.en-=4;const r=Math.random();
+const b=S.bait>0;if(b)S.bait--;if(r<(b?0:.25))say('ไม่มีปลาติดเบ็ด... 🌊');else{const k=r<(b?.35:.65)?'f1':r<(b?.7:.9)?'f2':'f3';S.items[k]++;say('ตกได้ '+FISH[k].e+' '+FISH[k].n+'!')}ui()}
+const SK='farm2';function save(){if(window.nosave)return;try{localStorage.setItem(SK,JSON.stringify({S,soil,eggs,P:SC<0?P:{x:15,y:5,f:[1,0]}}))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(SK));if(!d)return false;Object.assign(S,d.S);Object.assign(soil,d.soil);Object.assign(eggs,d.eggs);Object.assign(P,d.P);return true}catch(e){return false}}
+setInterval(save,20000);
+function sleep(forced){if(SC>=0){SC=-1;IN=false;P.x=15;P.y=5}for(const k in soil){const s=soil[k];if(s.crop&&s.wet&&s.crop.age<CR[s.crop.k].d&&(season()<3||S.day%2===0))s.crop.age++;s.wet=false}
+S.day++;S.min=360;S.en=forced?Math.round(S.maxEn*.6):S.maxEn;S.rain=Math.random()<.25;
+if(S.rain||S.spouse!=null)for(const k in soil)soil[k].wet=true;
+hens.forEach(h=>{const k=Math.round(h.x)+','+Math.round(h.y);if(!h.fam&&(h.cow||Math.random()<.6)&&!eggs[k])eggs[k]=h.cow?2:1});
+say(forced?'ง่วงจนหลับไปเอง... 😴':S.rain?'ตื่นแล้ว! วันนี้ฝนตก 🌧️ ไม่ต้องรดน้ำ':'อรุณสวัสดิ์! ☀️ วันใหม่เริ่มแล้ว');famUp();fday();fnote();ui();save()}
+function act(){if($('modal').style.display==='flex')return;sfx('tap');
+const tx=P.x+P.f[0],ty=P.y+P.f[1],o=objAt(tx,ty),k=tx+','+ty,s=SC<0?soil[k]:null;
+if(o==='house'){modal('<h2>🏠 เข้านอนไหม?</h2><p>นอนแล้วพืชที่รดน้ำจะโตขึ้น และพลังงานจะเต็ม 💤</p><button class="btn" onclick="closeM();sleep(false)">นอนเลย</button> <button class="btn g" onclick="closeM()">ยังก่อน</button> <button class="btn" onclick="family()">📖 ครอบครัว/ภารกิจ</button>');return}
+if(o==='shop'){shop();return}if(o==='box'){sellAll();return}if(o==='bld'){enter();return}if(o==='host'){cafe(SC);return}if(o==='door'){leave();return}if(o==='act'){vact(SC);return}if(o==='v1'||o==='v2'){chat(SC,o==='v1'?0:1);return}if(o==='elder'){village(SC);return}if(o==='fr'){friend(SC);return}if(o==='fr2'){friend(SC+5);return}if(o==='out'){home();return}if(o==='npc'){talk();return}if(o==='gate'){travel();return}if(o==='pond'){fish();return}
+if(s&&s.crop&&s.crop.age>=CR[s.crop.k].d){S.items[s.crop.k]++;say('เก็บเกี่ยว '+CR[s.crop.k].n+' ได้แล้ว! '+CR[s.crop.k].e);s.crop=null;ui();return}
+const t=TL[S.tool];
+if(S.en<=0){say('หมดแรงแล้ว ไปนอนกันเถอะ 😴');return}
+if(t.k==='hoe'){if(inF(tx,ty)&&free(tx,ty)&&!s){soil[k]={wet:S.rain,crop:null};S.en-=Math.max(1,3-S.uh)}else say('ขุดตรงนี้ไม่ได้นะ')}
+else if(t.k==='can'){if(s){s.wet=true;S.en-=Math.max(1,2-S.uc)}else say('ต้องขุดดินก่อนนะ ⛏️')}
+else if(t.k==='rod'){say('เหวี่ยงเบ็ดที่บ่อปลาด้านบนนะ 🎣')}else{if(s&&!s.crop){if(S.seeds[t.k]>0){S.seeds[t.k]--;s.crop={k:t.k,age:0};S.en-=1}else say('เมล็ดหมดแล้ว ไปซื้อที่ร้านค้า 🏪')}else say('ต้องมีดินที่ขุดแล้วและว่างอยู่')}
+S.en=Math.max(0,S.en);ui()}
+const held={};let lastMv=0;
+function tryMove(dx,dy){P.f=[dx,dy];const nx=P.x+dx,ny=P.y+dy;if(free(nx,ny)){P.x=nx;P.y=ny;const k=nx+','+ny;if(SC<0&&eggs[k]){const m=eggs[k]===2;delete eggs[k];if(m){S.items.milk=(S.items.milk||0)+1;say('ได้นมวัว 🥛 สดๆ!')}else{S.items.egg++;say('ได้ไข่ไก่ 🥚 ฟองหนึ่ง!')}ui()}}}
+const KM={ArrowUp:[0,-1],w:[0,-1],ArrowDown:[0,1],s:[0,1],ArrowLeft:[-1,0],a:[-1,0],ArrowRight:[1,0],d:[1,0]};
+addEventListener('keydown',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;
+if(KM[k]){held[k]=1;e.preventDefault()}else if(k===' '||k==='z'||k==='Enter'||k==='e'){e.preventDefault();if(!e.repeat)act()}else if(k>='1'&&k<='7'){S.tool=+k-1;ui()}});
+addEventListener('keyup',e=>{const k=e.key.length===1?e.key.toLowerCase():e.key;delete held[k]});
+document.querySelectorAll('.dp button').forEach(b=>{const v=b.dataset.d;b.addEventListener('pointerdown',e=>{e.preventDefault();held[v]=1});['pointerup','pointerleave','pointercancel'].forEach(n=>b.addEventListener(n,()=>delete held[v]))});
+$('act').addEventListener('pointerdown',e=>{e.preventDefault();act()});
+$('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeM()});
+setInterval(()=>{if($('modal').style.display==='flex')return;S.min+=10;if(S.min>=1440)sleep(true);ui()},6000);
+setInterval(()=>hens.forEach(h=>{const d=[[1,0],[-1,0],[0,1],[0,-1],[0,0]][Math.floor(Math.random()*5)],nx=h.x+d[0],ny=h.y+d[1];
+if(free(nx,ny)&&!soil[nx+','+ny]&&!(nx===P.x&&ny===P.y)){h.x=nx;h.y=ny}}),1100);
+const drops=Array.from({length:50},()=>({x:Math.random()*576,y:Math.random()*384}));
+function em(e,x,y,s){g.font=s+'px '+EF;g.textAlign='center';g.textBaseline='middle';g.fillText(e,x,y)}
+function lbl(t,x,y){g.font='600 10px Mali,sans-serif';g.textAlign='center';g.lineWidth=3;g.strokeStyle='#fff';g.strokeText(t,x,y);g.fillStyle='#8a5a44';g.fillText(t,x,y)}
+function draw(now){
+if(now-lastMv>140&&$('modal').style.display!=='flex'){for(const k in held){const v=KM[k]||k.split(',').map(Number);tryMove(v[0],v[1]);lastMv=now;break}}
+for(let y=0;y<H;y++)for(let x=0;x<W;x++){const px=x*T,py=y*T,h=hs(x,y);
+const gc=SC<0?GC[season()]:IN?VF:VG[SC];g.fillStyle=inF(x,y)?((x+y)%2?gc[0]:gc[1]):((x+y)%2?gc[2]:gc[3]);g.fillRect(px,py,T,T);
+if(h%13===0&&!inF(x,y)&&!IN){g.fillStyle=['#ffc2d6','#fff0a6','#ffffff'][h%3];g.beginPath();g.arc(px+8+h%15,py+8+h%11,3,0,7);g.fill()}
+const s=SC<0&&soil[x+','+y];if(s){g.fillStyle=s.wet?'#9a6a47':'#d2a579';g.beginPath();g.roundRect(px+2,py+2,T-4,T-4,8);g.fill()}}
+for(const k in(SC<0?soil:{})){const s=soil[k];if(!s.crop)continue;const[x,y]=k.split(',').map(Number),c=CR[s.crop.k],a=s.crop.age,cx=x*T+16,cy=y*T+16;
+if(a>=c.d){em(c.e,cx,cy+Math.sin(now/300)*1.5,24);em('✨',cx+9,cy-9,10)}else em(a<c.d/2?'🌱':'🌿',cx,cy,a<c.d/2?16:21)}
+for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(tree(x,y))em(IN?'🧱':hs(x,y)%5===0?['🌸','🌻','🍁','⛄'][season()]:season()===3?'🌲':'🌳',x*T+16,y*T+15,hs(x,y)%5===0?26:30);
+for(const k in OB()){const r=OB()[k];if(r.m){r.ax+=(r.x-r.ax)*.15;r.ay+=(r.y-r.ay)*.15}const cx=((r.m?r.ax:r.x)+r.w/2)*T,cy=((r.m?r.ay:r.y)+r.h/2)*T;if(k==='pond'){g.fillStyle='#9fd8f2';g.beginPath();g.roundRect(r.x*T+2,r.y*T+4,r.w*T-4,r.h*T-8,22);g.fill();em('🐟',cx-20+Math.sin(now/600)*14,cy,16);em('🪷',cx+22,cy-6,18)}else em(k==='house'?['🏠','🏡','🏰'][S.hl||0]:r.e,cx,cy,r.w>1?54:28);lbl(r.l,cx,(r.y+r.h)*T+(r.w>1?1:0)-(r.w>1?0:0))}
+for(const k in(SC<0?eggs:{})){const[x,y]=k.split(',').map(Number);em(eggs[k]===2?'🥛':'🥚',x*T+16,y*T+18,16)}
+(SC<0?hens:[]).forEach(h=>{h.cx+=(h.x-h.cx)*.12;h.cy+=(h.y-h.cy)*.12;em(h.e,h.cx*T+16,h.cy*T+16-Math.abs(Math.sin(now/120))*(Math.abs(h.x-h.cx)+Math.abs(h.y-h.cy)>.1?3:0),h.cow?30:22)});
+const tx=(P.x+P.f[0])*T,ty=(P.y+P.f[1])*T;g.strokeStyle='rgba(255,130,170,.9)';g.lineWidth=2;g.setLineDash([5,4]);g.beginPath();g.roundRect(tx+2,ty+2,T-4,T-4,8);g.stroke();g.setLineDash([]);
+g.fillStyle='rgba(0,0,0,.12)';g.beginPath();g.ellipse(P.x*T+16,P.y*T+27,10,4,0,0,7);g.fill();
+em('🧑‍🌾',P.x*T+16,P.y*T+14+Math.sin(now/250)*1,26);
+if(SC>=0){g.fillStyle='rgba(255,255,255,.8)';g.beginPath();g.roundRect(178,28,220,22,11);g.fill();lbl(VIL[SC].e+' '+VIL[SC].n,288,40)}if(S.day%7===0){for(let x=0;x<W;x++)em(x%2?'🎏':FEST[season()].e,x*T+16,9,14)}if(S.min>1080){g.fillStyle='rgba(60,40,110,'+Math.min(.4,(S.min-1080)/900)+')';g.fillRect(0,0,576,384)}
+if(S.rain){g.fillStyle='rgba(120,150,200,.22)';g.fillRect(0,0,576,384);g.strokeStyle='rgba(255,255,255,.7)';g.lineWidth=1.5;g.beginPath();
+drops.forEach(d=>{d.y+=7;d.x-=1.5;if(d.y>384){d.y=-10;d.x=Math.random()*600}g.moveTo(d.x,d.y);g.lineTo(d.x-2,d.y+8)});g.stroke()}else if(season()===3){g.fillStyle='rgba(255,255,255,.85)';drops.forEach(d=>{d.y+=1.5;d.x+=Math.sin(now/700+d.y/20)*.6;if(d.y>384){d.y=-6;d.x=Math.random()*576}g.beginPath();g.arc(d.x,d.y,2,0,7);g.fill()})}
+requestAnimationFrame(draw)}
+const had=load();if(S.cow)hens.push(mkCow());famUp();ui();requestAnimationFrame(draw);
+if(had)say('ยินดีต้อนรับกลับมา! 🌾 โหลดเกมเก่าให้แล้ว');else modal('<h2>🌸 ยินดีต้อนรับสู่ฟาร์มสุขใจ 2</h2><p>⛏️ ใช้<b>จอบ</b>ขุดดินในสวน (พื้นหญ้าสีอ่อน)<br>🧅 ใส่<b>เมล็ด</b>ลงดินที่ขุดแล้ว<br>💧 <b>รดน้ำ</b>ทุกวัน พืชถึงจะโต<br>🥕 พืชโตเต็มที่มีประกายวิบวับ กดเก็บได้เลย<br>📦 เอาของไปขายที่<b>ลัง</b>หรือ<b>ร้านค้า</b><br>🥚 เก็บไข่จากน้องไก่ได้ด้วยนะ<br>🏠 เหนื่อยแล้วไปนอนที่<b>บ้าน</b></p><p>🎣 ตกปลาที่บ่อ · 👧 คุยกับน้องใบเตยรับเควสต์ · 🌽 มีข้าวโพดใหม่ · 4 ฤดูเปลี่ยนทุก 7 วัน (หน้าหนาวพืชโตช้าลง) · 💾 เซฟอัตโนมัติ</p><p>🆕 ป้าย 🚏 ที่มุมขวาของฟาร์ม พาไปเดินเที่ยว 5 หมู่บ้าน (ชาวบ้านเดินไปมา มีเพื่อน 2 คนต่อหมู่บ้าน ร้านอาหารมีเควสต์) มีเพื่อน ภารกิจ แต่งงานและสร้างครอบครัว 💞 (ดูภารกิจหลักที่บ้าน)</p><p>🎯 เป้าหมาย: เก็บเงินให้ครบ 3,000 เหรียญ!</p><button class="btn" onclick="closeM()">เริ่มทำฟาร์ม!</button>');
+</script></body></html>
